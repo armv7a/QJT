@@ -17,7 +17,7 @@
         .header { display: flex; align-items: flex-start; margin-bottom: 15px; }
         .header .left { width: 30%; text-align: center; padding-right: 20px; margin-top: 10px; }
         .header .left img { width: 100%; height: auto; max-height: 140px; object-fit: cover; border-radius: 6px; cursor: pointer; }
-        .header .left .status { margin-top: 10px; color: white; background-color: #c9302c; padding: 3px 10px; text-align: center; font-size: 14px; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        .header .left .status { margin-top: 10px; color: white; background-color: #c9302c; padding: 3px 10px; text-align: center; font-size: 14px; font-weight: bold; border-radius: 5px; }
         .header .left .time { margin-top: 10px; font-size: 16px; font-weight: bold; color: #333; }
         .header .right { width: 70%; }
         .header .right p { margin: 5px 0; line-height: 1.4; }
@@ -33,22 +33,12 @@
         .leave-time { display: flex; align-items: center; margin: 10px 0; }
         .leave-time .time-label { font-weight: normal; color: #333; margin-right: 11px; }
         .leave-time .time-period { color: #666; display: flex; flex-direction: column; }
-        .leave-detail { display: flex; align-items: center; }
+        .leave-detail { display: flex; align-items: center; font-weight: normal; }
         .leave-detail span { color: #666; margin-left: 11px; margin-right: 11px; }
         .time-block span { color: #666; }
         .custom-leave-time { padding: 10px; border: 1px solid #ccc; margin-bottom: 10px; }
         .custom-leave-time select { margin-bottom: 5px; }
-        
-        /* 新增样式：使"请假天数"字体粗细与"请假时间"保持一致 */
-        .leave-detail {
-            font-weight: normal; /* 与.time-label保持一致 */
-        }
-        
-        /* 调整时间显示的上下间距 */
-        #startTimeDisplay, #endTimeDisplay {
-            margin: 1px 0; /* 从原来的默认值调整为6px上下间距 */
-            line-height: 1.5;
-        }
+        #startTimeDisplay, #endTimeDisplay { margin: 1px 0; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -56,9 +46,9 @@
     <div class="container">
         <div class="header">
             <div class="left">
-                <img id="profileImage" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100%' height='100%' fill='%23f4f4f4'/%3E%3Ctext x='50%' y='50%' font-size='16' text-anchor='middle' fill='%23ccc'%3E上传头像%3C/text%3E%3C/svg%3E" alt="头像">
+                <img id="profileImage" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100%25' height='100%25' fill='%23f4f4f4'/%3E%3Ctext x='50%25' y='50%25' font-size='16' text-anchor='middle' fill='%23ccc'%3E上传头像%3C/text%3E%3C/svg%3E" alt="头像">
                 <input type="file" id="uploadPhoto" accept="image/*" style="display: none;">
-                <div class="status" id="status">休假中</div>
+                <div class="status" id="status">待休假</div>
                 <div id="time" class="time">16:46:26</div>
             </div>
             <div class="right">
@@ -103,19 +93,35 @@
         }
 
         let leaveType = '病假';
-        let statusType = '休假中';
         const now = new Date();
         const currentYear = now.getFullYear();
-        let startTime = new Date(currentYear, now.getMonth(), now.getDate(), 0, 0); // 初始化为当天0点
-        let endTime = new Date(currentYear, now.getMonth(), now.getDate(), 0, 0); // 初始化为当天0点
+        let startTime = new Date(currentYear, now.getMonth(), now.getDate(), 0, 0);
+        let endTime = new Date(currentYear, now.getMonth(), now.getDate(), 0, 0);
 
-        function updateTime() {
-            const date = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Hong_Kong' }));
-            document.getElementById('time').innerText = date.toTimeString().split(' ')[0];
+        function getBeijingTime() {
+            return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
         }
 
-        setInterval(updateTime, 1000);
+        function updateTime() {
+            const beijingDate = getBeijingTime();
+            document.getElementById('time').innerText = beijingDate.toTimeString().split(' ')[0];
+        }
+
+        function updateStatusByTime() {
+            const beijingNow = getBeijingTime();
+            if (beijingNow >= startTime && beijingNow <= endTime) {
+                document.getElementById('status').innerText = '休假中';
+            } else {
+                document.getElementById('status').innerText = '待休假';
+            }
+        }
+
+        setInterval(function() {
+            updateTime();
+            updateStatusByTime();
+        }, 1000);
         updateTime();
+        updateStatusByTime();
 
         document.getElementById('profileImage').addEventListener('click', () => document.getElementById('uploadPhoto').click());
         document.getElementById('uploadPhoto').addEventListener('change', event => {
@@ -126,8 +132,6 @@
             reader.readAsDataURL(event.target.files[0]);
         });
 
-        document.getElementById('status').addEventListener('click', () => showModal('status'));
-
         function showModal(fieldId) {
             const modalContent = document.getElementById('modalContent');
             if (fieldId === 'leaveTime') {
@@ -135,13 +139,6 @@
                 initializeTimeSelectors();
             } else if (fieldId === 'explanation') {
                 modalContent.innerHTML = `<textarea id="modalInput">${document.getElementById(fieldId).innerText}</textarea>`;
-            } else if (fieldId === 'status') {
-                modalContent.innerHTML = `
-                    <select onchange="updateFieldValue('${fieldId}', this.value); closeModal();">
-                        <option value="休假中" ${statusType === '休假中' ? 'selected' : ''}>休假中</option>
-                        <option value="待休假" ${statusType === '待休假' ? 'selected' : ''}>待休假</option>
-                    </select>
-                `;
             } else if (fieldId === 'leaveReason') {
                 modalContent.innerHTML = `
                     <select onchange="updateFieldValue('${fieldId}', this.value); closeModal();">
@@ -217,6 +214,7 @@
                 document.getElementById('endTimeDisplay').innerText = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')} ${endHour}点止`;
 
                 updateLeaveDays();
+                updateStatusByTime();
             } else {
                 document.getElementById(fieldId).innerText = document.getElementById('modalInput').value;
             }
@@ -226,8 +224,6 @@
         function updateFieldValue(fieldId, value) {
             if (fieldId === 'leaveReason') {
                 leaveType = value;
-            } else if (fieldId === 'status') {
-                statusType = value;
             }
             document.getElementById(fieldId).innerText = value;
         }
@@ -255,7 +251,6 @@
             }
         });
 
-        // 初始化显示当前日期的0点
         document.getElementById('startTimeDisplay').innerText = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')} 0点起`;
         document.getElementById('endTimeDisplay').innerText = `${endTime.getFullYear()}-${String(endTime.getMonth() + 1).padStart(2, '0')}-${String(endTime.getDate()).padStart(2, '0')} 0点止`;
         updateLeaveDays();
